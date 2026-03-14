@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🤖 AI 인생분석기</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #13131a;
+    --border: #2a2a3a;
+    --accent: #ff3c6e;
+    --accent2: #00f0c0;
+    --accent3: #ffd94a;
+    --text: #f0f0f8;
+    --muted: #6b6b8a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* 배경 그리드 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,60,110,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,60,110,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  .container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 60px 20px 100px;
+  }
+
+  /* 헤더 */
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+    animation: fadeDown 0.8s ease;
+  }
+
+  .header .badge {
+    display: inline-block;
+    background: rgba(255,60,110,0.1);
+    border: 1px solid rgba(255,60,110,0.3);
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+  }
+
+  .header h1 {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(42px, 8vw, 76px);
+    line-height: 1;
+    letter-spacing: -2px;
+    margin-bottom: 16px;
+  }
+
+  .header h1 .line1 { color: var(--text); }
+  .header h1 .line2 {
+    color: var(--accent);
+    -webkit-text-stroke: 1px var(--accent);
+    text-shadow: 0 0 40px rgba(255,60,110,0.4);
+  }
+
+  .header p {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 1.7;
+  }
+
+  /* 업로드 존 */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 20px;
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background: var(--card);
+    animation: fadeUp 0.8s ease 0.2s both;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(255,60,110,0.05);
+    transform: translateY(-2px);
+  }
+
+  .upload-zone .upload-icon {
+    font-size: 56px;
+    margin-bottom: 20px;
+    display: block;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .upload-zone h3 {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .upload-zone p {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* 미리보기 */
+  .preview-section {
+    display: none;
+    animation: fadeUp 0.5s ease;
+  }
+
+  .preview-section.visible { display: block; }
+
+  .preview-img {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+    background: var(--card);
+  }
+
+  /* 분석 버튼 */
+  .analyze-btn {
+    width: 100%;
+    padding: 20px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .analyze-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(255,60,110,0.4);
+  }
+
+  .analyze-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .analyze-btn .btn-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* 로딩 */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 60px 0;
+    animation: fadeUp 0.4s ease;
+  }
+
+  .loading.visible { display: block; }
+
+  .loading-bar-wrap {
+    background: var(--border);
+    border-radius: 100px;
+    height: 4px;
+    overflow: hidden;
+    margin: 24px 0 16px;
+  }
+
+  .loading-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 100px;
+    animation: loadingBar 2.5s ease-in-out infinite;
+  }
+
+  .loading-status {
+    font-size: 13px;
+    color: var(--muted);
+    min-height: 20px;
+  }
+
+  .loading h3 {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 24px;
+    color: var(--accent2);
+  }
+
+  /* 결과 */
+  .results {
+    display: none;
+    animation: fadeUp 0.6s ease;
+  }
+
+  .results.visible { display: block; }
+
+  .result-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 40px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  }
+
+  .result-header .verdict {
+    font-size: 56px;
+    margin-bottom: 12px;
+  }
+
+  .result-header h2 {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  .result-header .roast {
+    color: #c0c0d8;
+    font-size: 16px;
+    line-height: 1.8;
+    font-weight: 300;
+  }
+
+  /* 점수 바 */
+  .score-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .score-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+
+  .score-card:hover { transform: translateY(-3px); }
+
+  .score-card .score-emoji { font-size: 28px; margin-bottom: 8px; }
+  .score-card .score-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .score-card .score-value { font-family: 'Black Han Sans', sans-serif; font-size: 32px; }
+
+  /* 감지 결과 카드들 */
+  .detect-grid {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .detect-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .detect-card:hover { border-color: var(--accent2); }
+
+  .detect-card .tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+
+  .detect-card .tag.cls { background: rgba(255,217,74,0.15); color: var(--accent3); }
+  .detect-card .tag.det { background: rgba(0,240,192,0.12); color: var(--accent2); }
+  .detect-card .tag.pose { background: rgba(255,60,110,0.12); color: var(--accent); }
+  .detect-card .tag.ocr { background: rgba(140,100,255,0.12); color: #a080ff; }
+
+  .detect-card h4 {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .detect-card p {
+    color: #a0a0c0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .detect-card .raw {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: monospace;
+    background: rgba(255,255,255,0.03);
+    padding: 10px;
+    border-radius: 8px;
+    word-break: break-all;
+  }
+
+  /* 재시작 버튼 */
+  .restart-btn {
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+  }
+
+  .restart-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* 에러 */
+  .error-box {
+    background: rgba(255,60,110,0.08);
+    border: 1px solid rgba(255,60,110,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    color: #ff8080;
+    font-size: 14px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .error-box.visible { display: block; }
+
+  /* 태그 클라우드 */
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .tag-item {
+    background: rgba(0,240,192,0.08);
+    border: 1px solid rgba(0,240,192,0.2);
+    color: var(--accent2);
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 100px;
+  }
+
+  /* 애니메이션 */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  @keyframes loadingBar {
+    0% { width: 0%; margin-left: 0; }
+    50% { width: 70%; }
+    100% { width: 0%; margin-left: 100%; }
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .pop { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 헤더 -->
+  <div class="header">
+    <div class="badge">✦ AI POWERED ✦</div>
+    <h1>
+      <div class="line1">당신의 사진을</div>
+      <div class="line2">분석해드림</div>
+    </h1>
+    <p>사진 한 장이면 충분해요.<br>우리 AI가 당신의 모든 걸 분석하고 낱낱이 까발립니다.</p>
+  </div>
+
+  <!-- 업로드 -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="image/*">
+    <span class="upload-icon">📸</span>
+    <h3>여기에 사진을 끌어다 놓으세요</h3>
+    <p>또는 클릭해서 선택 · JPG, PNG, WEBP 지원</p>
+  </div>
+
+  <!-- 미리보기 + 분석 버튼 -->
+  <div class="preview-section" id="previewSection">
+    <img class="preview-img" id="previewImg" src="" alt="미리보기">
+    <button class="analyze-btn" id="analyzeBtn">
+      <span class="btn-inner">
+        <span>🔍</span>
+        <span>AI 분석 시작!</span>
+      </span>
+    </button>
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- 로딩 -->
+  <div class="loading" id="loading">
+    <h3>🧠 AI가 열심히 분석 중...</h3>
+    <div class="loading-bar-wrap">
+      <div class="loading-bar"></div>
+    </div>
+    <div class="loading-status" id="loadingStatus">모델 깨우는 중...</div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="results" id="results"></div>
+
+</div>
+
+<script>
+const API_BASE = 'http://127.0.0.1:8000';
+
+// 재밌는 로딩 메시지
+const loadingMessages = [
+  '모델 깨우는 중... 💤',
+  '사진 열심히 쳐다보는 중... 👀',
+  '픽셀 하나하나 분석 중... 🔬',
+  '뭔가 포착됨... 🎯',
+  '보고서 작성 중... 📝',
+  '결과 꾸미는 중... ✨',
+];
+
+// 재밌는 코멘트 생성
+function generateRoast(clsResult, detResult, poseResult) {
+  const roasts = [];
+  const objects = detResult?.predictions || [];
+  const objNames = objects.map(o => o.label);
+  const uniqueObjs = [...new Set(objNames)];
+  const cls = clsResult?.top1_label || '';
+  const persons = objects.filter(o => o.label === 'person').length;
+  const hasPose = poseResult?.predictions?.length > 0;
+
+  // 분류 기반
+  if (cls) {
+    roasts.push(`AI가 보기에 이 사진은 "${cls}" 입니다. 맞나요? 🤔`);
+  }
+
+  // 물체 기반
+  if (uniqueObjs.length === 0) {
+    roasts.push('아무것도 감지 안 됐어요... 혹시 흰 벽 찍으셨나요? 🧱');
+  } else if (uniqueObjs.length >= 5) {
+    roasts.push(`와, 사진 한 장에 ${uniqueObjs.length}가지나 있네요. 매우 바쁜 분이시군요. 📦`);
+  }
+
+  if (persons === 1) {
+    roasts.push('한 명 발견! 혼자네요... AI가 친구 해드릴게요. 🤝');
+  } else if (persons >= 2) {
+    roasts.push(`${persons}명 발견! 사교적이시군요. 👥`);
+  }
+
+  // 포즈 기반
+  if (hasPose) {
+    roasts.push('자세 분석 완료. 자세가 좀 구부정하진 않나요? 💆');
+  }
+
+  if (objNames.includes('cell phone')) {
+    roasts.push('폰이 감지됐습니다. 혹시 지금도 누워서 폰 보고 계신 건 아니죠? 📱');
+  }
+  if (objNames.includes('laptop') || objNames.includes('keyboard')) {
+    roasts.push('열심히 개발 중이신 건가요? 파이팅입니다 💻');
+  }
+  if (objNames.includes('cup') || objNames.includes('bottle')) {
+    roasts.push('카페인 섭취 감지. 오늘도 커피로 버티시는군요 ☕');
+  }
+  if (objNames.includes('cat')) {
+    roasts.push('고양이 발견! 고양이가 주인 맞죠? 🐱');
+  }
+  if (objNames.includes('dog')) {
+    roasts.push('멍멍이 발견! 착한 강아지네요 🐶');
+  }
+
+  if (roasts.length === 0) {
+    roasts.push('분석했는데... 솔직히 잘 모르겠어요. AI도 당황합니다. 🤷');
+  }
+
+  return roasts.join(' ');
+}
+
+// 점수 생성 (그냥 재미용)
+function generateScores(clsResult, detResult, poseResult) {
+  const conf = clsResult?.top1_confidence || 0.5;
+  const objCount = detResult?.predictions?.length || 0;
+
+  return [
+    { emoji: '🎭', label: '사진 퀄리티', value: Math.round(conf * 100) + '%', color: '#ffd94a' },
+    { emoji: '🔍', label: '물체 발견', value: objCount + '개', color: '#00f0c0' },
+    { emoji: '🧠', label: 'AI 확신도', value: Math.round(conf * 80 + 20) + '%', color: '#ff3c6e' },
+    { emoji: '⭐', label: '인생점수', value: Math.round(60 + Math.random() * 35) + '점', color: '#a080ff' },
+  ];
+}
+
+// 결과 렌더링
+function renderResults(cls, det, pose, ocr) {
+  const resultsEl = document.getElementById('results');
+  const roast = generateRoast(cls, det, pose);
+  const scores = generateScores(cls, det, pose);
+  const objects = det?.predictions || [];
+  const uniqueObjs = [...new Set(objects.map(o => o.label))];
+  const poseCount = pose?.predictions?.length || 0;
+  const ocrTexts = ocr?.results?.map(r => r.text) || [];
+
+  let html = `
+    <div class="result-header pop">
+      <div class="verdict">🤖</div>
+      <h2>분석 완료! 들어봐요</h2>
+      <div class="roast">${roast}</div>
+    </div>
+
+    <div class="score-section">
+      ${scores.map((s, i) => `
+        <div class="score-card pop" style="animation-delay:${i * 0.1}s">
+          <div class="score-emoji">${s.emoji}</div>
+          <div class="score-label">${s.label}</div>
+          <div class="score-value" style="color:${s.color}">${s.value}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="detect-grid">
+  `;
+
+  // 분류 결과
+  if (cls?.top1_label) {
+    html += `
+      <div class="detect-card pop" style="animation-delay:0.2s">
+        <span class="tag cls">🏷️ 이미지 분류</span>
+        <h4>${cls.top1_label}</h4>
+        <p>AI가 이 사진을 "${cls.top1_label}"으로 분류했어요. 확신도: ${Math.round((cls.top1_confidence || 0) * 100)}%</p>
+        ${cls.top5 ? `<div class="raw">후보군: ${cls.top5.slice(0,3).map(t => t.label).join(', ')}</div>` : ''}
+      </div>
+    `;
+  }
+
+  // 객체 감지 결과
+  if (uniqueObjs.length > 0) {
+    html += `
+      <div class="detect-card pop" style="animation-delay:0.3s">
+        <span class="tag det">👁️ 객체 감지</span>
+        <h4>${objects.length}개 물체 발견</h4>
+        <p>사진 안에서 이런 것들이 보여요:</p>
+        <div class="tag-cloud">
+          ${uniqueObjs.map(o => `<span class="tag-item">${o}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="detect-card pop" style="animation-delay:0.3s">
+        <span class="tag det">👁️ 객체 감지</span>
+        <h4>아무것도 안 보임</h4>
+        <p>뭔지 모르겠어요. 미니멀하시군요 🤍</p>
+      </div>
+    `;
+  }
+
+  // 포즈 결과
+  html += `
+    <div class="detect-card pop" style="animation-delay:0.4s">
+      <span class="tag pose">🧍 자세 분석</span>
+      <h4>${poseCount > 0 ? `${poseCount}명의 자세 감지` : '사람 없음'}</h4>
+      <p>${poseCount > 0 ? `${poseCount}명의 관절 포인트를 분석했어요. 자세 관리하세요! 💪` : '사진에 사람이 없거나 잘 안 보여요. 혼자 계신 건 아니죠? 🏠'}</p>
+    </div>
+  `;
+
+  // OCR 결과
+  if (ocrTexts.length > 0) {
+    html += `
+      <div class="detect-card pop" style="animation-delay:0.5s">
+        <span class="tag ocr">📖 텍스트 인식</span>
+        <h4>글자 발견!</h4>
+        <p>사진에서 이런 글자들이 보여요:</p>
+        <div class="raw">${ocrTexts.slice(0,5).join(' / ')}</div>
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+
+  // 재시작
+  html += `<button class="restart-btn" onclick="resetAll()">🔄 다른 사진 분석하기</button>`;
+
+  resultsEl.innerHTML = html;
+  resultsEl.classList.add('visible');
+}
+
+// 분석 실행
+async function analyze(file) {
+  document.getElementById('loading').classList.add('visible');
+  document.getElementById('previewSection').style.display = 'none';
+  document.getElementById('errorBox').classList.remove('visible');
+
+  // 로딩 메시지 순환
+  let msgIdx = 0;
+  const statusEl = document.getElementById('loadingStatus');
+  const msgInterval = setInterval(() => {
+    statusEl.textContent = loadingMessages[msgIdx % loadingMessages.length];
+    msgIdx++;
+  }, 700);
+
+  try {
+    // 병렬로 API 호출
+    const makeFormData = (extraFields = {}) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      Object.entries(extraFields).forEach(([k, v]) => fd.append(k, v));
+      return fd;
+    };
+
+    const [clsRes, detRes, poseRes, ocrRes] = await Promise.allSettled([
+      fetch(`${API_BASE}/predict/classification`, { method: 'POST', body: makeFormData() }),
+      fetch(`${API_BASE}/predict/detection`, { method: 'POST', body: makeFormData({ score_threshold: 0.5 }) }),
+      fetch(`${API_BASE}/predict/pose-estimation`, { method: 'POST', body: makeFormData({ score_threshold: 0.7 }) }),
+      fetch(`${API_BASE}/predict/ocr`, { method: 'POST', body: makeFormData() }),
+    ]);
+
+    const parseResult = async (res) => {
+      if (res.status === 'fulfilled' && res.value.ok) {
+        return res.value.json();
+      }
+      return null;
+    };
+
+    const [cls, det, pose, ocr] = await Promise.all([
+      parseResult(clsRes),
+      parseResult(detRes),
+      parseResult(poseRes),
+      parseResult(ocrRes),
+    ]);
+
+    clearInterval(msgInterval);
+    document.getElementById('loading').classList.remove('visible');
+    renderResults(cls, det, pose, ocr);
+
+  } catch (err) {
+    clearInterval(msgInterval);
+    document.getElementById('loading').classList.remove('visible');
+    document.getElementById('previewSection').style.display = 'block';
+    const errBox = document.getElementById('errorBox');
+    errBox.textContent = `❌ 오류: ${err.message} — API 서버(http://127.0.0.1:8000)가 실행 중인지 확인해주세요.`;
+    errBox.classList.add('visible');
+  }
+}
+
+// 파일 선택 처리
+function handleFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('previewImg').src = e.target.result;
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('previewSection').classList.add('visible');
+    document.getElementById('previewSection').style.display = 'block';
+    document.getElementById('results').classList.remove('visible');
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('analyzeBtn').onclick = () => analyze(file);
+}
+
+function resetAll() {
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('previewSection').classList.remove('visible');
+  document.getElementById('previewSection').style.display = 'none';
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('loading').classList.remove('visible');
+  document.getElementById('fileInput').value = '';
+}
+
+// 이벤트
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+</script>
+</body>
+</html>
