@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from PIL import Image
 import io
 import torch
+from transformers import pipeline
+
 
 # 각 모델 모듈 임포트
 import test_model as cls_module
@@ -49,6 +51,10 @@ async def lifespan(app: FastAPI):
     # 5. OCR (EasyOCR)
     models['ocr_gpu'] = ocr_module.get_device()
     models['ocr'] = ocr_module.load_model(models['ocr_gpu'])
+    
+    # 6. Sentiment Analysis (Hugging Face Transformers)
+    print("감정 분석 모델 로드 중...")
+    models['sentiment'] = pipeline("sentiment-analysis", device=0 if torch.cuda.is_available() else -1)
     
     print("[서버 시작 완료] 모든 모델이 정상적으로 로드되었습니다.")
     
@@ -145,6 +151,14 @@ async def predict_ocr(file: UploadFile = File(...)):
     """광학 문자 인식 (EasyOCR, 한글 지원)"""
     image = await load_image_from_upload(file)
     result = ocr_module.predict(models['ocr'], image)
+    return JSONResponse(content=result)
+    
+
+@app.post("/predict/sentiment")
+async def predict_sentiment(text: str = Form(...)):
+    """텍스트 감정 분석 (Hugging Face Transformers)"""
+    # pipeline은 리스트 형태의 결과를 반환하므로 첫 번째 항목 추출
+    result = models['sentiment'](text)[0]
     return JSONResponse(content=result)
 
 if __name__ == "__main__":
