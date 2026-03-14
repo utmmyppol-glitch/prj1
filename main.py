@@ -1,7 +1,9 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from PIL import Image
+import io
 import torch
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -68,6 +70,15 @@ async def lifespan(app: FastAPI):
 
 # FastAPI 앱 생성
 app = FastAPI(title="Deep Learning Models API", lifespan=lifespan)
+
+# CORS 설정 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 실제 배포 시에는 특정 도메인으로 제한하는 것이 좋습니다.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # 유틸리티 함수: 업로드된 파일을 PIL 이미지로 변환
 async def load_image_from_upload(file: UploadFile) -> Image.Image:
